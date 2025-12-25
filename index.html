@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burak Multiomics Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --emerald: #10b981; --amber: #f59e0b; --rose: #ef4444;
+            --blue: #3b82f6; --purple: #8b5cf6; --slate: #0f172a;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            color: #e2e8f0; min-height: 100vh; padding: 20px;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+        .header {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px; padding: 24px 32px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand h1 { font-size: 32px; font-weight: 800; color: #60a5fa; }
+        .patient-select {
+            padding: 12px 24px; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+            color: #ffffff; font-weight: 600; font-size: 13px; cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .patient-select option { background: #1a1f2e; color: #ffffff; }
+        .layer-nav {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;
+        }
+        .layer-btn {
+            padding: 16px; background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+            cursor: pointer; transition: all 0.3s; text-align: center;
+        }
+        .layer-btn.active {
+            background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.5);
+            box-shadow: 0 0 20px rgba(59,130,246,0.2);
+        }
+        .layer-btn.locked { opacity: 0.3; cursor: not-allowed; }
+        .layer-num { font-size: 10px; color: #60a5fa; font-weight: 900; margin-bottom: 4px; font-family: 'JetBrains Mono'; }
+        .layer-name { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+        .layer-status { font-size: 9px; color: #64748b; text-transform: uppercase; }
+        .layer-content { display: none; }
+        .layer-content.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .processing-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10,14,26,0.95); z-index: 9999;
+            display: none; align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .processing-overlay.active { display: flex; animation: fadeIn 0.3s; }
+        .processing-spinner {
+            width: 80px; height: 80px; border: 4px solid rgba(59,130,246,0.2);
+            border-top: 4px solid #60a5fa; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 24px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .processing-text {
+            font-size: 18px; font-weight: 700; color: #60a5fa;
+            text-align: center; font-family: 'JetBrains Mono';
+        }
+        .processing-subtext {
+            font-size: 12px; color: #94a3b8; margin-top: 8px;
+            font-family: 'JetBrains Mono';
+        }
+        
+        .patient-header {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+            border: 1px solid rgba(59,130,246,0.3); border-radius: 16px;
+            padding: 40px; margin-bottom: 32px; text-align: center;
+        }
+        .patient-name {
+            font-size: 48px; font-weight: 900;
+            background: linear-gradient(135deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .patient-meta { font-size: 14px; color: #94a3b8; font-family: 'JetBrains Mono'; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
+        .kpi-card {
+            background: rgba(255,255,255,0.02); border: 3px solid; border-radius: 16px;
+            padding: 28px; text-align: center; transition: all 0.3s;
+        }
+        .kpi-card:hover { transform: translateY(-4px); }
+        .kpi-card.green { border-color: var(--emerald); background: rgba(16,185,129,0.05); }
+        .kpi-card.amber { border-color: var(--amber); background: rgba(245,158,11,0.05); }
+        .kpi-card.rose { border-color: var(--rose); background: rgba(239,68,68,0.05); }
+        .kpi-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 12px; }
+        .kpi-value { font-size: 56px; font-weight: 900; line-height: 1; margin-bottom: 8px; }
+        .kpi-value.green { color: var(--emerald); }
+        .kpi-value.amber { color: var(--amber); }
+        .kpi-value.rose { color: var(--rose); }
+        .kpi-subtitle { font-size: 12px; color: #64748b; }
+        .gcc-section {
+            background: rgba(255,255,255,0.02); border: 3px solid; border-radius: 16px;
+            padding: 28px; margin-bottom: 32px;
+        }
+        .gcc-section.green { border-color: var(--emerald); }
+        .gcc-section.amber { border-color: var(--amber); }
+        .gcc-section.rose { border-color: var(--rose); }
+        .gcc-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .gcc-title { font-size: 16px; font-weight: 900; color: #60a5fa; text-transform: uppercase; }
+        .gcc-score-card {
+            background: rgba(0,0,0,0.3); padding: 16px 32px; border-radius: 12px;
+            border-left: 4px solid; text-align: center;
+        }
+        .gcc-score-card.green { border-color: var(--emerald); }
+        .gcc-score-card.amber { border-color: var(--amber); }
+        .gcc-score-card.rose { border-color: var(--rose); }
+        .gcc-score-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; }
+        .gcc-score-value { font-size: 48px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+        .gcc-score-value.green { color: var(--emerald); }
+        .gcc-score-value.amber { color: var(--amber); }
+        .gcc-score-value.rose { color: var(--rose); }
+        .gcc-score-grade { font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .gcc-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+        .gcc-marker {
+            background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px;
+            border: 3px solid; text-align: center;
+        }
+        .gcc-marker.green { border-color: var(--emerald); }
+        .gcc-marker.amber { border-color: var(--amber); }
+        .gcc-marker.rose { border-color: var(--rose); }
+        .gcc-marker-name { font-size: 9px; font-weight: 900; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
+        .gcc-marker-value { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
+        .gcc-marker-value.green { color: var(--emerald); }
+        .gcc-marker-value.amber { color: var(--amber); }
+        .gcc-marker-value.rose { color: var(--rose); }
+        .gcc-marker-unit { font-size: 9px; color: #64748b; }
+        .blobs-section { margin-bottom: 32px; }
+        .blobs-title { font-size: 20px; font-weight: 900; color: #60a5fa; margin-bottom: 24px; text-transform: uppercase; }
+        .blobs-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; }
+        .blob { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; }
+        .blob-header { text-align: center; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; }
+        .blob-icon { font-size: 32px; margin-bottom: 8px; }
+        .blob-name { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
+        .marker-item {
+            background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px;
+            margin-bottom: 8px; border: 2px solid;
+        }
+        .marker-item.green { border-color: var(--emerald); }
+        .marker-item.amber { border-color: var(--amber); }
+        .marker-item.rose { border-color: var(--rose); }
+        .marker-name { font-size: 8px; font-weight: 900; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+        .marker-value { font-size: 18px; font-weight: 900; margin-bottom: 2px; }
+        .marker-value.green { color: var(--emerald); }
+        .marker-value.amber { color: var(--amber); }
+        .marker-value.rose { color: var(--rose); }
+        .marker-unit { font-size: 8px; color: #64748b; }
+        .marker-ref { 
+            font-size: 7px; margin-top: 4px; padding: 4px 6px; 
+            border-radius: 4px; font-family: 'JetBrains Mono';
+            display: inline-block; font-weight: 700;
+        }
+        .marker-ref.green { background: rgba(16,185,129,0.2); color: var(--emerald); border: 1px solid var(--emerald); }
+        .marker-ref.amber { background: rgba(245,158,11,0.2); color: var(--amber); border: 1px solid var(--amber); }
+        .marker-ref.rose { background: rgba(239,68,68,0.2); color: var(--rose); border: 1px solid var(--rose); }
+        .phyla-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-top: 32px; }
+        .phyla-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 24px; border-radius: 12px; text-align: center; }
+        .phyla-circle {
+            width: 90px; height: 90px; margin: 0 auto 12px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 900; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .phyla-name { font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+        .phyla-role { font-size: 9px; color: #64748b; }
+        .sentinel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .sentinel-card {
+            background: rgba(255,255,255,0.02); border: 3px solid; padding: 32px; border-radius: 16px;
+        }
+        .sentinel-card.green { border-color: var(--emerald); background: rgba(16,185,129,0.05); }
+        .sentinel-card.amber { border-color: var(--amber); background: rgba(245,158,11,0.05); }
+        .sentinel-card.rose { border-color: var(--rose); background: rgba(239,68,68,0.05); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 20px rgba(239,68,68,0); } }
+        .sentinel-header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 24px; }
+        .sentinel-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 16px; font-family: 'JetBrains Mono'; }
+        .sentinel-status { font-size: 32px; font-weight: 900; margin-bottom: 8px; }
+        .sentinel-status.green { color: var(--emerald); }
+        .sentinel-status.amber { color: var(--amber); }
+        .sentinel-status.rose { color: var(--rose); }
+        .sentinel-verdict { font-size: 13px; font-weight: 800; text-transform: uppercase; color: #94a3b8; }
+        .sentinel-details { display: grid; gap: 12px; }
+        .sentinel-marker {
+            background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px;
+            display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+        }
+        .sentinel-marker-name { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+        .sentinel-marker-reason { font-size: 11px; color: #cbd5e1; line-height: 1.5; }
+        .sentinel-marker-value { font-size: 36px; font-weight: 900; text-align: right; }
+        .sentinel-marker-value.green { color: var(--emerald); }
+        .sentinel-marker-value.amber { color: var(--amber); }
+        .sentinel-marker-value.rose { color: var(--rose); }
+        .cohort-grid { display: grid; gap: 16px; }
+        .cohort-card { background: rgba(255,255,255,0.02); border: 3px solid; border-radius: 12px; overflow: hidden; }
+        .cohort-card.optimal { border-color: var(--emerald); }
+        .cohort-card.low { border-color: #475569; }
+        .cohort-card.medium { border-color: var(--amber); }
+        .cohort-card.high { border-color: var(--rose); }
+        .cohort-main { padding: 24px; display: grid; grid-template-columns: 50px 1fr auto; gap: 20px; align-items: center; }
+        .cohort-icon { font-size: 32px; }
+        .cohort-info h3 { font-size: 16px; font-weight: 900; margin-bottom: 6px; }
+        .cohort-markers { font-size: 10px; color: #64748b; font-family: 'JetBrains Mono'; }
+        .cohort-percent { font-size: 40px; font-weight: 900; text-align: center; }
+        .cohort-percent.optimal { color: var(--emerald); }
+        .cohort-percent.low { color: #64748b; }
+        .cohort-percent.medium { color: var(--amber); }
+        .cohort-percent.high { color: var(--rose); }
+        .cohort-label { font-size: 9px; text-transform: uppercase; font-weight: 700; color: #64748b; text-align: center; }
+        .cohort-status { font-size: 10px; font-weight: 800; margin-top: 4px; text-align: center; }
+        .cohort-deep-dive {
+            background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1); padding: 20px 24px;
+        }
+        .deep-dive-title { font-size: 11px; font-weight: 900; color: #60a5fa; margin-bottom: 16px; text-transform: uppercase; }
+        .math-breakdown { display: grid; gap: 8px; }
+        .math-row {
+            display: grid; grid-template-columns: 180px 1fr auto; gap: 12px; align-items: center;
+            padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px;
+            font-family: 'JetBrains Mono'; font-size: 10px;
+        }
+        .math-condition { color: #94a3b8; }
+        .math-logic { color: #cbd5e1; }
+        .math-score { font-weight: 900; text-align: right; }
+        .math-score.green { color: var(--emerald); }
+        .math-score.amber { color: var(--amber); }
+        .math-score.rose { color: var(--rose); }
+        .math-total {
+            border-top: 2px solid rgba(255,255,255,0.2); padding-top: 12px;
+            margin-top: 8px; font-size: 11px; font-weight: 900; text-align: center;
+        }
+        .terminal {
+            background: #000; border: 1px solid #333; border-radius: 8px; padding: 16px;
+            font-family: 'JetBrains Mono'; font-size: 11px; color: #0f0;
+            margin-bottom: 24px; max-height: 200px; overflow-y: auto;
+        }
+        .terminal-line { margin-bottom: 4px; }
+        .terminal-prompt { color: #60a5fa; }
+        .terminal-success { color: #10b981; }
+        .handshake-visual {
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 40px; margin-bottom: 24px;
+        }
+        .scan-header { text-align: center; margin-bottom: 32px; }
+        .scan-title { font-size: 24px; font-weight: 900; color: #ec4899; margin-bottom: 8px; }
+        .scan-subtitle { font-size: 12px; color: #94a3b8; }
+        .blob-scanner { display: grid; grid-template-columns: 1fr auto 1fr; gap: 40px; align-items: center; margin-bottom: 32px; }
+        .blob-visual {
+            background: rgba(255,255,255,0.02); border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 28px; text-align: center;
+        }
+        .blob-visual-icon { font-size: 64px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .blob-visual-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #a855f7; margin-bottom: 12px; }
+        .blob-visual-name { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+        .blob-visual-value { font-size: 40px; font-weight: 900; }
+        .blob-visual-value.green { color: var(--emerald); }
+        .blob-visual-value.amber { color: var(--amber); }
+        .blob-visual-value.rose { color: var(--rose); }
+        .connector-arrow { font-size: 48px; color: #ec4899; text-align: center; animation: pulse-arrow 1.5s ease-in-out infinite; }
+        @keyframes pulse-arrow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .connector-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; text-align: center; }
+        .scan-data {
+            background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);
+            padding: 20px; border-radius: 12px;
+        }
+        .scan-data-title { font-size: 12px; font-weight: 900; color: #60a5fa; margin-bottom: 12px; text-transform: uppercase; }
+        .scan-data-text { font-size: 12px; line-height: 1.8; color: #cbd5e1; }
+        .diagnostic-sheet { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 32px; }
+        .diagnostic-header { text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .diagnostic-title { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+        .diagnostic-title.sovereignty { color: var(--emerald); }
+        .diagnostic-title.decoherence { color: var(--rose); }
+        .diagnostic-subtitle { font-size: 12px; color: #64748b; }
+        .diagnostic-section { margin-bottom: 28px; }
+        .diagnostic-section-title { font-size: 14px; font-weight: 900; color: #60a5fa; margin-bottom: 12px; text-transform: uppercase; }
+        .diagnostic-text { font-size: 12px; line-height: 1.8; color: #cbd5e1; margin-bottom: 12px; }
+        .diagnostic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 12px; }
+        .diagnostic-item { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 6px; border-left: 3px solid; }
+        .diagnostic-item.green { border-color: var(--emerald); }
+        .diagnostic-item.amber { border-color: var(--amber); }
+        .diagnostic-item.rose { border-color: var(--rose); }
+        .diagnostic-item-title { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+        .diagnostic-item-value { font-size: 13px; font-weight: 700; }
+        .disclaimer-box {
+            background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+            padding: 16px; border-radius: 10px; margin-top: 20px;
+        }
+        .disclaimer-title { font-size: 11px; font-weight: 900; color: #f59e0b; margin-bottom: 8px; text-transform: uppercase; }
+        .disclaimer-text { font-size: 10px; line-height: 1.6; color: #cbd5e1; }
+        .btn {
+            padding: 14px 32px; border: none; border-radius: 8px; font-size: 11px;
+            font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; transition: all 0.3s; font-family: 'JetBrains Mono';
+        }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(59,130,246,0.4); }
+        .btn-success { background: var(--emerald); color: white; }
+        .alert {
+            padding: 16px 20px; border-radius: 8px; margin-bottom: 20px;
+            font-size: 11px; font-weight: 600; border-left: 3px solid;
+        }
+        .alert.info { background: rgba(59,130,246,0.1); border-color: var(--blue); color: #93c5fd; }
+        .alert.success { background: rgba(16,185,129,0.1); border-color: var(--emerald); color: #6ee7b7; }
+        .alert.warning { background: rgba(245,158,11,0.1); border-color: var(--amber); color: #fcd34d; }
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 24px; }
+        .footer { text-align: center; padding: 32px; color: #475569; font-size: 10px; margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <div class="processing-overlay" id="processing-overlay">
+        <div class="processing-spinner"></div>
+        <div class="processing-text" id="processing-text">PROCESSING...</div>
+        <div class="processing-subtext" id="processing-subtext">Analyzing multi-omic data</div>
+    </div>
+
+    <div class="container">
+        <header class="header">
+            <div class="brand">
+                <h1>🔬 BURAK MULTIOMICS</h1>
+            </div>
+            <select class="patient-select" id="patient-select" onchange="loadPatient()"></select>
+        </header>
+
+        <div class="layer-nav">
+            <div class="layer-btn active" onclick="switchLayer(1)">
+                <div class="layer-num">LAYER 01</div><div class="layer-name">Clinical Lake</div><div class="layer-status">Foundation</div>
+            </div>
+            <div class="layer-btn locked" id="layer2-btn" onclick="switchLayer(2)">
+                <div class="layer-num">LAYER 02</div><div class="layer-name">Sentinel</div><div class="layer-status" id="layer2-status">Locked</div>
+            </div>
+            <div class="layer-btn locked" id="layer3-btn" onclick="switchLayer(3)">
+                <div class="layer-num">LAYER 03</div><div class="layer-name">Cohort Matrix</div><div class="layer-status" id="layer3-status">Locked</div>
+            </div>
+            <div class="layer-btn locked" id="layer4-btn" onclick="switchLayer(4)">
+                <div class="layer-num">LAYER 04</div><div class="layer-name">Handshake</div><div class="layer-status" id="layer4-status">Locked</div>
+            </div>
+            <div class="layer-btn locked" id="layer5-btn" onclick="switchLayer(5)">
+                <div class="layer-num">LAYER 05</div><div class="layer-name">AI Diagnostic</div><div class="layer-status" id="layer5-status">Locked</div>
+            </div>
+        </div>
+
+        <div class="layer-content active" id="layer1">
+            <div class="alert info"><strong>📥 LAYER 01: CLINICAL LAKE</strong><br>Complete biological foundation with GCC scoring, color-coded markers, and phyla analysis.</div>
+            <div class="patient-header" id="patient-header"></div>
+            <div class="kpi-grid" id="kpi-grid"></div>
+            <div id="gcc-section"></div>
+            <div class="blobs-section"><div class="blobs-title">📊 MARKER CATEGORIES</div><div class="blobs-grid" id="blobs-grid"></div></div>
+            <div class="blobs-section"><div class="blobs-title">🦠 GUT PHYLA MICROBIAL ENGINE</div><div class="phyla-grid" id="phyla-grid"></div></div>
+            <div class="text-center mb-4"><button class="btn btn-primary" onclick="analyzeSentinel()">ANALYZE SENTINEL LAYER →</button></div>
+        </div>
+
+        <div class="layer-content" id="layer2">
+            <div class="alert info"><strong>🔍 LAYER 02: SENTINEL ANALYSIS</strong><br>Complete diagnostic proof with detailed root cause identification.</div>
+            <div class="sentinel-grid" id="sentinel-grid"></div>
+            <div class="text-center mb-4"><button class="btn btn-primary" onclick="analyzeCohorts()">ANALYZE COHORT MATRIX →</button></div>
+        </div>
+
+        <div class="layer-content" id="layer3">
+            <div class="alert warning"><strong>📊 LAYER 03: COHORT MATRIX</strong><br>Disease pattern matching with mathematical breakdown.</div>
+            <div class="cohort-grid" id="cohort-grid"></div>
+            <div class="text-center mb-4"><button class="btn btn-primary" onclick="analyzeHandshakes()">ANALYZE HANDSHAKE PATHWAYS →</button></div>
+        </div>
+
+        <div class="layer-content" id="layer4">
+            <div class="alert info"><strong>🔗 LAYER 04: HANDSHAKE PATHWAYS</strong><br>Multi-pathway gut-blood correlation analysis with color-coded status indicators.</div>
+            <div class="terminal" id="terminal"></div>
+            <div id="handshake-container"></div>
+            <div class="text-center mb-4"><button class="btn btn-success" onclick="unlockLayer(5)">GENERATE AI DIAGNOSTIC →</button></div>
+        </div>
+
+        <div class="layer-content" id="layer5">
+            <div class="alert success"><strong>🧠 LAYER 05: AI DIAGNOSTIC SHEET</strong><br>Final clinical verdict with diagnostic summary and actionable insights.</div>
+            <div class="diagnostic-sheet" id="diagnostic-sheet"></div>
+        </div>
+
+        <footer class="footer">
+            <strong>Developed by WASEEM AHANGER</strong>
+        </footer>
+    </div>
+    <script>
+    const PATIENTS=[{id:0,name:"Peak Sovereignty",age:32,bioAge:26,case:"Optimal Baseline",markers:{glucose:{value:82,ref:'70-99',unit:'mg/dL'},hba1c:{value:4.9,ref:'4.0-5.6',unit:'%'},insulin:{value:4.2,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:0.9,ref:'<1.8',unit:'index'},triglycerides:{value:85,ref:'<150',unit:'mg/dL'},hdl:{value:62,ref:'>45',unit:'mg/dL'},ldl:{value:78,ref:'<100',unit:'mg/dL'},apo_b:{value:64,ref:'<80',unit:'mg/dL'},lp_a:{value:12,ref:'<30',unit:'mg/dL'},crp:{value:0.4,ref:'<1.0',unit:'mg/L'},ferritin:{value:65,ref:'30-200',unit:'ng/mL'},cortisol:{value:12,ref:'6-23',unit:'μg/dL'},homocysteine:{value:8.5,ref:'5-15',unit:'μmol/L'},alt:{value:20,ref:'<35',unit:'U/L'},ast:{value:22,ref:'<40',unit:'U/L'},ggt:{value:18,ref:'<55',unit:'U/L'},albumin:{value:4.5,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:4.2,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:0.9,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:105,ref:'>90',unit:'mL/min'},bun:{value:14,ref:'7-20',unit:'mg/dL'},vit_d:{value:42,ref:'30-100',unit:'ng/mL'},vit_b12:{value:520,ref:'200-900',unit:'pg/mL'},folate:{value:14.5,ref:'>5.4',unit:'ng/mL'},magnesium:{value:2.1,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:85,ref:'60-170',unit:'μg/dL'},zinc:{value:95,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:24.2,role:'Harvesting'},bacteroides:{value:36.5,role:'Burning'},akkermansia:{value:12.1,role:'Shield'},actinobacteria:{value:8.2,role:'Defense'},proteobacteria:{value:1.1,role:'Hazard'}}},{id:1,name:"Metabolic Crisis",age:58,bioAge:72,case:"Severe T2D Pattern",markers:{glucose:{value:152,ref:'70-99',unit:'mg/dL'},hba1c:{value:7.6,ref:'4.0-5.6',unit:'%'},insulin:{value:28.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:12.8,ref:'<1.8',unit:'index'},triglycerides:{value:245,ref:'<150',unit:'mg/dL'},hdl:{value:32,ref:'>45',unit:'mg/dL'},ldl:{value:165,ref:'<100',unit:'mg/dL'},apo_b:{value:145,ref:'<80',unit:'mg/dL'},lp_a:{value:68,ref:'<30',unit:'mg/dL'},crp:{value:8.5,ref:'<1.0',unit:'mg/L'},ferritin:{value:385,ref:'30-200',unit:'ng/mL'},cortisol:{value:32,ref:'6-23',unit:'μg/dL'},homocysteine:{value:18.5,ref:'5-15',unit:'μmol/L'},alt:{value:58,ref:'<35',unit:'U/L'},ast:{value:62,ref:'<40',unit:'U/L'},ggt:{value:78,ref:'<55',unit:'U/L'},albumin:{value:3.2,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:8.9,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1.4,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:62,ref:'>90',unit:'mL/min'},bun:{value:28,ref:'7-20',unit:'mg/dL'},vit_d:{value:18,ref:'30-100',unit:'ng/mL'},vit_b12:{value:185,ref:'200-900',unit:'pg/mL'},folate:{value:4.2,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.5,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:45,ref:'60-170',unit:'μg/dL'},zinc:{value:58,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:42.3,role:'Harvesting'},bacteroides:{value:18.1,role:'Burning'},akkermansia:{value:2.8,role:'Shield'},actinobacteria:{value:9.8,role:'Defense'},proteobacteria:{value:3.2,role:'Hazard'}}},{id:2,name:"Renal Decay",age:48,bioAge:57,case:"CKD Stage 3",markers:{glucose:{value:98,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.4,ref:'4.0-5.6',unit:'%'},insulin:{value:8.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:2.1,ref:'<1.8',unit:'index'},triglycerides:{value:165,ref:'<150',unit:'mg/dL'},hdl:{value:42,ref:'>45',unit:'mg/dL'},ldl:{value:118,ref:'<100',unit:'mg/dL'},apo_b:{value:128,ref:'<80',unit:'mg/dL'},lp_a:{value:42,ref:'<30',unit:'mg/dL'},crp:{value:3.2,ref:'<1.0',unit:'mg/L'},ferritin:{value:215,ref:'30-200',unit:'ng/mL'},cortisol:{value:18,ref:'6-23',unit:'μg/dL'},homocysteine:{value:16.2,ref:'5-15',unit:'μmol/L'},alt:{value:35,ref:'<35',unit:'U/L'},ast:{value:38,ref:'<40',unit:'U/L'},ggt:{value:52,ref:'<55',unit:'U/L'},albumin:{value:4.1,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:9.2,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1.6,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:58,ref:'>90',unit:'mL/min'},bun:{value:32,ref:'7-20',unit:'mg/dL'},vit_d:{value:28,ref:'30-100',unit:'ng/mL'},vit_b12:{value:380,ref:'200-900',unit:'pg/mL'},folate:{value:8.5,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.9,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:72,ref:'60-170',unit:'μg/dL'},zinc:{value:78,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:28.5,role:'Harvesting'},bacteroides:{value:32.1,role:'Burning'},akkermansia:{value:5.2,role:'Shield'},actinobacteria:{value:7.8,role:'Defense'},proteobacteria:{value:2.8,role:'Hazard'}}},{id:3,name:"Inflammatory Storm",age:42,bioAge:52,case:"IBD Risk Pattern",markers:{glucose:{value:95,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.8,ref:'4.0-5.6',unit:'%'},insulin:{value:12.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:3.2,ref:'<1.8',unit:'index'},triglycerides:{value:185,ref:'<150',unit:'mg/dL'},hdl:{value:38,ref:'>45',unit:'mg/dL'},ldl:{value:135,ref:'<100',unit:'mg/dL'},apo_b:{value:115,ref:'<80',unit:'mg/dL'},lp_a:{value:52,ref:'<30',unit:'mg/dL'},crp:{value:12.5,ref:'<1.0',unit:'mg/L'},ferritin:{value:425,ref:'30-200',unit:'ng/mL'},cortisol:{value:28,ref:'6-23',unit:'μg/dL'},homocysteine:{value:22.5,ref:'5-15',unit:'μmol/L'},alt:{value:48,ref:'<35',unit:'U/L'},ast:{value:52,ref:'<40',unit:'U/L'},ggt:{value:68,ref:'<55',unit:'U/L'},albumin:{value:3.6,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:7.8,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1.1,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:78,ref:'>90',unit:'mL/min'},bun:{value:22,ref:'7-20',unit:'mg/dL'},vit_d:{value:22,ref:'30-100',unit:'ng/mL'},vit_b12:{value:295,ref:'200-900',unit:'pg/mL'},folate:{value:6.8,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.6,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:55,ref:'60-170',unit:'μg/dL'},zinc:{value:62,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:38.5,role:'Harvesting'},bacteroides:{value:22.8,role:'Burning'},akkermansia:{value:3.5,role:'Shield'},actinobacteria:{value:11.2,role:'Defense'},proteobacteria:{value:4.5,role:'Hazard'}}},{id:4,name:"Lipid Particle Drift",age:52,bioAge:60,case:"CVD Risk",markers:{glucose:{value:92,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.6,ref:'4.0-5.6',unit:'%'},insulin:{value:10.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:2.5,ref:'<1.8',unit:'index'},triglycerides:{value:210,ref:'<150',unit:'mg/dL'},hdl:{value:35,ref:'>45',unit:'mg/dL'},ldl:{value:158,ref:'<100',unit:'mg/dL'},apo_b:{value:138,ref:'<80',unit:'mg/dL'},lp_a:{value:75,ref:'<30',unit:'mg/dL'},crp:{value:4.8,ref:'<1.0',unit:'mg/L'},ferritin:{value:285,ref:'30-200',unit:'ng/mL'},cortisol:{value:22,ref:'6-23',unit:'μg/dL'},homocysteine:{value:17.5,ref:'5-15',unit:'μmol/L'},alt:{value:42,ref:'<35',unit:'U/L'},ast:{value:45,ref:'<40',unit:'U/L'},ggt:{value:62,ref:'<55',unit:'U/L'},albumin:{value:3.8,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:8.2,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1.2,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:72,ref:'>90',unit:'mL/min'},bun:{value:24,ref:'7-20',unit:'mg/dL'},vit_d:{value:25,ref:'30-100',unit:'ng/mL'},vit_b12:{value:325,ref:'200-900',unit:'pg/mL'},folate:{value:7.2,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.8,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:68,ref:'60-170',unit:'μg/dL'},zinc:{value:72,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:35.8,role:'Harvesting'},bacteroides:{value:24.2,role:'Burning'},akkermansia:{value:4.8,role:'Shield'},actinobacteria:{value:8.5,role:'Defense'},proteobacteria:{value:3.5,role:'Hazard'}}},{id:5,name:"Pre-Diabetic Shift",age:45,bioAge:51,case:"Borderline Pattern",markers:{glucose:{value:105,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.9,ref:'4.0-5.6',unit:'%'},insulin:{value:15.2,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:3.8,ref:'<1.8',unit:'index'},triglycerides:{value:195,ref:'<150',unit:'mg/dL'},hdl:{value:40,ref:'>45',unit:'mg/dL'},ldl:{value:125,ref:'<100',unit:'mg/dL'},apo_b:{value:102,ref:'<80',unit:'mg/dL'},lp_a:{value:38,ref:'<30',unit:'mg/dL'},crp:{value:2.8,ref:'<1.0',unit:'mg/L'},ferritin:{value:245,ref:'30-200',unit:'ng/mL'},cortisol:{value:19,ref:'6-23',unit:'μg/dL'},homocysteine:{value:14.5,ref:'5-15',unit:'μmol/L'},alt:{value:38,ref:'<35',unit:'U/L'},ast:{value:42,ref:'<40',unit:'U/L'},ggt:{value:58,ref:'<55',unit:'U/L'},albumin:{value:4.2,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:7.5,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:88,ref:'>90',unit:'mL/min'},bun:{value:18,ref:'7-20',unit:'mg/dL'},vit_d:{value:32,ref:'30-100',unit:'ng/mL'},vit_b12:{value:420,ref:'200-900',unit:'pg/mL'},folate:{value:9.5,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.9,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:75,ref:'60-170',unit:'μg/dL'},zinc:{value:82,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:32.5,role:'Harvesting'},bacteroides:{value:28.2,role:'Burning'},akkermansia:{value:7.5,role:'Shield'},actinobacteria:{value:8.8,role:'Defense'},proteobacteria:{value:2.2,role:'Hazard'}}},{id:6,name:"Nutrient Depletion",age:38,bioAge:44,case:"Micronutrient Deficiency",markers:{glucose:{value:88,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.2,ref:'4.0-5.6',unit:'%'},insulin:{value:6.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:1.4,ref:'<1.8',unit:'index'},triglycerides:{value:125,ref:'<150',unit:'mg/dL'},hdl:{value:52,ref:'>45',unit:'mg/dL'},ldl:{value:95,ref:'<100',unit:'mg/dL'},apo_b:{value:72,ref:'<80',unit:'mg/dL'},lp_a:{value:22,ref:'<30',unit:'mg/dL'},crp:{value:1.2,ref:'<1.0',unit:'mg/L'},ferritin:{value:28,ref:'30-200',unit:'ng/mL'},cortisol:{value:15,ref:'6-23',unit:'μg/dL'},homocysteine:{value:11.5,ref:'5-15',unit:'μmol/L'},alt:{value:28,ref:'<35',unit:'U/L'},ast:{value:32,ref:'<40',unit:'U/L'},ggt:{value:35,ref:'<55',unit:'U/L'},albumin:{value:4.3,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:5.2,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:0.9,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:98,ref:'>90',unit:'mL/min'},bun:{value:15,ref:'7-20',unit:'mg/dL'},vit_d:{value:18,ref:'30-100',unit:'ng/mL'},vit_b12:{value:175,ref:'200-900',unit:'pg/mL'},folate:{value:4.5,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.6,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:52,ref:'60-170',unit:'μg/dL'},zinc:{value:62,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:26.5,role:'Harvesting'},bacteroides:{value:34.2,role:'Burning'},akkermansia:{value:10.5,role:'Shield'},actinobacteria:{value:8.5,role:'Defense'},proteobacteria:{value:1.8,role:'Hazard'}}},{id:7,name:"Hepatic Stress",age:55,bioAge:62,case:"NAFLD Pattern",markers:{glucose:{value:102,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.7,ref:'4.0-5.6',unit:'%'},insulin:{value:11.8,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:2.9,ref:'<1.8',unit:'index'},triglycerides:{value:225,ref:'<150',unit:'mg/dL'},hdl:{value:36,ref:'>45',unit:'mg/dL'},ldl:{value:142,ref:'<100',unit:'mg/dL'},apo_b:{value:125,ref:'<80',unit:'mg/dL'},lp_a:{value:45,ref:'<30',unit:'mg/dL'},crp:{value:3.5,ref:'<1.0',unit:'mg/L'},ferritin:{value:295,ref:'30-200',unit:'ng/mL'},cortisol:{value:17,ref:'6-23',unit:'μg/dL'},homocysteine:{value:15.8,ref:'5-15',unit:'μmol/L'},alt:{value:65,ref:'<35',unit:'U/L'},ast:{value:55,ref:'<40',unit:'U/L'},ggt:{value:92,ref:'<55',unit:'U/L'},albumin:{value:3.9,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:7.9,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1.1,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:82,ref:'>90',unit:'mL/min'},bun:{value:19,ref:'7-20',unit:'mg/dL'},vit_d:{value:28,ref:'30-100',unit:'ng/mL'},vit_b12:{value:365,ref:'200-900',unit:'pg/mL'},folate:{value:8.2,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.8,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:88,ref:'60-170',unit:'μg/dL'},zinc:{value:78,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:36.8,role:'Harvesting'},bacteroides:{value:25.5,role:'Burning'},akkermansia:{value:6.2,role:'Shield'},actinobacteria:{value:9.2,role:'Defense'},proteobacteria:{value:2.9,role:'Hazard'}}},{id:8,name:"Athletic Optimal",age:29,bioAge:24,case:"High Performance",markers:{glucose:{value:78,ref:'70-99',unit:'mg/dL'},hba1c:{value:4.7,ref:'4.0-5.6',unit:'%'},insulin:{value:3.5,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:0.7,ref:'<1.8',unit:'index'},triglycerides:{value:72,ref:'<150',unit:'mg/dL'},hdl:{value:68,ref:'>45',unit:'mg/dL'},ldl:{value:72,ref:'<100',unit:'mg/dL'},apo_b:{value:58,ref:'<80',unit:'mg/dL'},lp_a:{value:8,ref:'<30',unit:'mg/dL'},crp:{value:0.3,ref:'<1.0',unit:'mg/L'},ferritin:{value:72,ref:'30-200',unit:'ng/mL'},cortisol:{value:10,ref:'6-23',unit:'μg/dL'},homocysteine:{value:7.5,ref:'5-15',unit:'μmol/L'},alt:{value:18,ref:'<35',unit:'U/L'},ast:{value:20,ref:'<40',unit:'U/L'},ggt:{value:15,ref:'<55',unit:'U/L'},albumin:{value:4.6,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:4.5,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:0.9,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:110,ref:'>90',unit:'mL/min'},bun:{value:12,ref:'7-20',unit:'mg/dL'},vit_d:{value:52,ref:'30-100',unit:'ng/mL'},vit_b12:{value:625,ref:'200-900',unit:'pg/mL'},folate:{value:16.2,ref:'>5.4',unit:'ng/mL'},magnesium:{value:2.2,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:95,ref:'60-170',unit:'μg/dL'},zinc:{value:102,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:22.5,role:'Harvesting'},bacteroides:{value:38.2,role:'Burning'},akkermansia:{value:13.5,role:'Shield'},actinobacteria:{value:7.8,role:'Defense'},proteobacteria:{value:0.9,role:'Hazard'}}},{id:9,name:"Thyroid Dysregulation",age:50,bioAge:56,case:"Subclinical Hypothyroid",markers:{glucose:{value:94,ref:'70-99',unit:'mg/dL'},hba1c:{value:5.5,ref:'4.0-5.6',unit:'%'},insulin:{value:9.2,ref:'2.0-25.0',unit:'μU/mL'},homa_ir:{value:2.2,ref:'<1.8',unit:'index'},triglycerides:{value:178,ref:'<150',unit:'mg/dL'},hdl:{value:42,ref:'>45',unit:'mg/dL'},ldl:{value:132,ref:'<100',unit:'mg/dL'},apo_b:{value:118,ref:'<80',unit:'mg/dL'},lp_a:{value:48,ref:'<30',unit:'mg/dL'},crp:{value:2.5,ref:'<1.0',unit:'mg/L'},ferritin:{value:185,ref:'30-200',unit:'ng/mL'},cortisol:{value:24,ref:'6-23',unit:'μg/dL'},homocysteine:{value:14.8,ref:'5-15',unit:'μmol/L'},alt:{value:32,ref:'<35',unit:'U/L'},ast:{value:36,ref:'<40',unit:'U/L'},ggt:{value:48,ref:'<55',unit:'U/L'},albumin:{value:4,ref:'3.5-5.5',unit:'g/dL'},uric_acid:{value:6.8,ref:'3.5-7.2',unit:'mg/dL'},creatinine:{value:1,ref:'0.7-1.3',unit:'mg/dL'},egfr:{value:86,ref:'>90',unit:'mL/min'},bun:{value:17,ref:'7-20',unit:'mg/dL'},vit_d:{value:26,ref:'30-100',unit:'ng/mL'},vit_b12:{value:285,ref:'200-900',unit:'pg/mL'},folate:{value:7.8,ref:'>5.4',unit:'ng/mL'},magnesium:{value:1.8,ref:'1.7-2.2',unit:'mg/dL'},iron:{value:68,ref:'60-170',unit:'μg/dL'},zinc:{value:75,ref:'66-110',unit:'μg/dL'}},phyla:{firmicutes:{value:30.2,role:'Harvesting'},bacteroides:{value:29.5,role:'Burning'},akkermansia:{value:8.8,role:'Shield'},actinobacteria:{value:8.9,role:'Defense'},proteobacteria:{value:2.1,role:'Hazard'}}}];
+
+    const MARKER_CATEGORIES={sugar:{name:'SUGAR',icon:'🍬',markers:['glucose','hba1c','insulin','homa_ir']},cardiac:{name:'CARDIAC',icon:'❤️',markers:['triglycerides','hdl','ldl','apo_b','lp_a']},fire:{name:'FIRE',icon:'🔥',markers:['crp','ferritin','cortisol','homocysteine']},liver:{name:'LIVER',icon:'💧',markers:['alt','ast','ggt','albumin']},renal:{name:'RENAL',icon:'🔬',markers:['uric_acid','creatinine','egfr','bun']},nutrient:{name:'NUTRIENT',icon:'🧬',markers:['vit_d','vit_b12','folate','magnesium','iron','zinc']}};
+    const MARKER_NAMES={glucose:'GLU',hba1c:'A1C',insulin:'INS',homa_ir:'HOMA',triglycerides:'TRIG',hdl:'HDL',ldl:'LDL',apo_b:'ApoB',lp_a:'Lp(a)',crp:'CRP',ferritin:'FER',cortisol:'COR',homocysteine:'HCY',alt:'ALT',ast:'AST',ggt:'GGT',albumin:'ALB',uric_acid:'URIC',creatinine:'CREAT',egfr:'eGFR',bun:'BUN',vit_d:'VIT-D',vit_b12:'B12',folate:'FOL',magnesium:'MAG',iron:'FE',zinc:'ZN'};
+    const GCC_MARKERS=['hba1c','homa_ir','apo_b','crp','ferritin','egfr'];
+
+    let currentPatient=0,currentLayer=1,unlockedLayers=[1];
+
+    function getStatus(id,v){const m=PATIENTS[currentPatient].markers[id],r=m.ref;if(r.includes('-')){const[min,max]=r.split('-').map(x=>parseFloat(x));if(v<min||v>max)return'rose';if(v<min*1.1||v>max*0.9)return'amber';return'green'}else if(r.startsWith('<')){const max=parseFloat(r.substring(1));if(v>=max)return'rose';if(v>=max*0.85)return'amber';return'green'}else if(r.startsWith('>')){const min=parseFloat(r.substring(1));if(v<=min)return'rose';if(v<=min*1.15)return'amber';return'green'}return'green'}
+
+    function getPhylaStatus(phyla,value){if(phyla==='firmicutes'){if(value>35)return'rose';if(value>30)return'amber';return'green'}else if(phyla==='bacteroides'){if(value<25)return'rose';if(value<30)return'amber';return'green'}else if(phyla==='akkermansia'){if(value<5)return'rose';if(value<8)return'amber';return'green'}else if(phyla==='actinobacteria'){if(value>10)return'rose';if(value>9)return'amber';return'green'}else if(phyla==='proteobacteria'){if(value>3)return'rose';if(value>2)return'amber';return'green'}return'green'}
+
+    function showProcessing(text,subtext){const o=document.getElementById('processing-overlay'),t=document.getElementById('processing-text'),s=document.getElementById('processing-subtext');t.textContent=text;s.textContent=subtext;o.classList.add('active')}
+    function hideProcessing(){setTimeout(()=>{document.getElementById('processing-overlay').classList.remove('active')},800)}
+
+    function init(){const s=document.getElementById('patient-select');PATIENTS.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p.name;s.appendChild(o)});loadPatient()}
+
+    function loadPatient(){currentPatient=parseInt(document.getElementById('patient-select').value);currentLayer=1;unlockedLayers=[1];for(let i=2;i<=5;i++){const b=document.getElementById(`layer${i}-btn`);b.classList.add('locked');b.classList.remove('active');document.getElementById(`layer${i}-status`).textContent='Locked'}switchLayer(1);renderClinicalLake()}
+
+    function switchLayer(l){if(!unlockedLayers.includes(l))return;window.scrollTo({top:0,behavior:'smooth'});currentLayer=l;document.querySelectorAll('.layer-btn').forEach((b,i)=>b.classList.toggle('active',i+1===l));for(let i=1;i<=5;i++)document.getElementById(`layer${i}`).classList.toggle('active',i===l)}
+
+    function unlockLayer(l){if(!unlockedLayers.includes(l)){unlockedLayers.push(l);const b=document.getElementById(`layer${l}-btn`);b.classList.remove('locked');document.getElementById(`layer${l}-status`).textContent='Unlocked'}if(l===3)renderCohortMatrix();else if(l===5)renderDiagnostic();switchLayer(l)}
+
+    function renderClinicalLake(){const p=PATIENTS[currentPatient];document.getElementById('patient-header').innerHTML=`<div class="patient-name">${p.name.toUpperCase()}</div><div class="patient-meta">AGE: ${p.age} | BIO-AGE: ${p.bioAge} | ${p.case}</div>`;let opt=0;Object.entries(p.markers).forEach(([k,d])=>{if(getStatus(k,d.value)==='green')opt++});const hs=Math.round((opt/27)*100),ad=p.age-p.bioAge;let hst=hs>=85?'green':hs>=60?'amber':'rose',ast=ad>0?'green':'rose',ost=opt>=20?'green':opt>=15?'amber':'rose';document.getElementById('kpi-grid').innerHTML=`<div class="kpi-card ${hst}"><div class="kpi-label">Health Score</div><div class="kpi-value ${hst}">${hs}%</div><div class="kpi-subtitle">${hst==='green'?'Optimal':hst==='amber'?'Warning':'Critical'}</div></div><div class="kpi-card ${ast}"><div class="kpi-label">Biological Age</div><div class="kpi-value ${ast}">${p.bioAge}</div><div class="kpi-subtitle">${ad>0?`-${ad} Years`:`+${Math.abs(ad)} Years`}</div></div><div class="kpi-card ${ost}"><div class="kpi-label">Optimal Markers</div><div class="kpi-value ${ost}">${opt}</div><div class="kpi-subtitle">of 27 Total</div></div><div class="kpi-card ${hst}"><div class="kpi-label">System Status</div><div class="kpi-value ${hst}">${hst==='green'?'✓':hst==='amber'?'!':'✗'}</div><div class="kpi-subtitle">${hst==='green'?'Sovereignty':hst==='amber'?'Drift':'Decoherence'}</div></div>`;renderGCC(p);renderBlobs(p);renderPhyla(p)}
+
+    function renderGCC(p){let tot=0;GCC_MARKERS.forEach(id=>{const st=getStatus(id,p.markers[id].value);if(st==='green')tot+=100;else if(st==='amber')tot+=50});const sc=Math.round(tot/600*100);let gr='F';if(sc>=90)gr='A+';else if(sc>=80)gr='A';else if(sc>=70)gr='B';else if(sc>=60)gr='C';else if(sc>=50)gr='D';const gst=sc>=70?'green':sc>=50?'amber':'rose';let html=`<div class="gcc-section ${gst}"><div class="gcc-header"><div class="gcc-title">⚠️ GCC CRITICAL CONTROL PANEL</div><div class="gcc-score-card ${gst}"><div class="gcc-score-label">GCC Score</div><div class="gcc-score-value ${gst}">${sc}%</div><div class="gcc-score-grade">Grade: ${gr}</div></div></div><div class="gcc-grid">`;GCC_MARKERS.forEach(id=>{const d=p.markers[id],st=getStatus(id,d.value);html+=`<div class="gcc-marker ${st}"><div class="gcc-marker-name">${MARKER_NAMES[id]}</div><div class="gcc-marker-value ${st}">${d.value}<div class="gcc-marker-unit">${d.unit}</div></div></div>`});html+=`</div></div>`;document.getElementById('gcc-section').innerHTML=html}
+
+    function renderBlobs(p){const g=document.getElementById('blobs-grid');g.innerHTML='';Object.entries(MARKER_CATEGORIES).forEach(([k,c])=>{const b=document.createElement('div');b.className='blob';b.innerHTML=`<div class="blob-header"><div class="blob-icon">${c.icon}</div><div class="blob-name">${c.name}</div></div>`;c.markers.forEach(m=>{const d=p.markers[m],st=getStatus(m,d.value),i=document.createElement('div');i.className=`marker-item ${st}`;i.innerHTML=`<div class="marker-name">${MARKER_NAMES[m]}</div><div class="marker-value ${st}">${d.value}<span class="marker-unit">${d.unit}</span></div><div class="marker-ref ${st}">Ref: ${d.ref}</div>`;b.appendChild(i)});g.appendChild(b)})}
+
+    function renderPhyla(p){const g=document.getElementById('phyla-grid');g.innerHTML='';const ph=[{k:'firmicutes',c:'#3b82f6'},{k:'bacteroides',c:'#10b981'},{k:'akkermansia',c:'#8b5cf6'},{k:'actinobacteria',c:'#ef4444'},{k:'proteobacteria',c:'#f59e0b'}];ph.forEach(x=>{const d=p.phyla[x.k],c=document.createElement('div');c.className='phyla-card';c.innerHTML=`<div class="phyla-circle" style="background:${x.c};color:white">${d.value}%</div><div class="phyla-name">${d.role}</div><div class="phyla-role">${x.k.toUpperCase()}</div>`;g.appendChild(c)})}
+
+    function analyzeSentinel(){showProcessing('PROCESSING LAYER 02','Analyzing sentinel markers...');setTimeout(()=>{unlockLayer(2);const p=PATIENTS[currentPatient],g=document.getElementById('sentinel-grid');g.innerHTML='';const crp=p.markers.crp,fer=p.markers.ferritin,cor=p.markers.cortisol,crps=getStatus('crp',crp.value),fers=getStatus('ferritin',fer.value),cors=getStatus('cortisol',cor.value);let ist='green',ivd='NO FIRE',ird=[];if(crps==='rose'){ist='rose';ivd='FIRE DETECTED';ird.push({m:'hs-CRP',v:crp.value,u:crp.unit,r:`Severe inflammation. CRP ${crp.value} is ${((crp.value/1)*100).toFixed(0)}% above normal.`})}else if(crps==='amber'){ist='amber';ivd='WARNING';ird.push({m:'hs-CRP',v:crp.value,u:crp.unit,r:`Early inflammation. CRP ${crp.value} approaching critical.`})}else{ird.push({m:'hs-CRP',v:crp.value,u:crp.unit,r:`Inflammation optimal. CRP ${crp.value} well within range.`})}if(fers==='rose'){if(ist!=='rose')ist='rose';ivd='FIRE DETECTED';ird.push({m:'FERRITIN',v:fer.value,u:fer.unit,r:`Iron dysregulation. Ferritin ${fer.value} indicates chronic inflammation.`})}else if(fers==='amber'){if(ist==='green')ist='amber';if(ivd==='NO FIRE')ivd='WARNING';ird.push({m:'FERRITIN',v:fer.value,u:fer.unit,r:`Elevated iron storage trending toward inflammatory range.`})}else{ird.push({m:'FERRITIN',v:fer.value,u:fer.unit,r:`Iron storage optimal. Ferritin ${fer.value} within healthy range.`})}const ic=document.createElement('div');ic.className=`sentinel-card ${ist}`;ic.innerHTML=`<div class="sentinel-header"><div class="sentinel-label">INFLAMMATION SENTINEL</div><div class="sentinel-status ${ist}">${ivd}</div><div class="sentinel-verdict">Systemic Fire Analysis</div></div><div class="sentinel-details">${ird.map(r=>`<div class="sentinel-marker"><div><div class="sentinel-marker-name">${r.m}</div><div class="sentinel-marker-reason">${r.r}</div></div><div class="sentinel-marker-value ${ist}">${r.v}<div style="font-size:10px">${r.u}</div></div></div>`).join('')}</div>`;g.appendChild(ic);let sst='green',svd='NO STRESS',srd=[];if(cors==='rose'){sst='rose';svd='STRESS DETECTED';srd.push({m:'CORTISOL',v:cor.value,u:cor.unit,r:`HPA axis dysregulation. Cortisol ${cor.value} indicates chronic stress.`})}else if(cors==='amber'){sst='amber';svd='WARNING';srd.push({m:'CORTISOL',v:cor.value,u:cor.unit,r:`Elevated stress hormone approaching critical threshold.`})}else{srd.push({m:'CORTISOL',v:cor.value,u:cor.unit,r:`Cortisol optimal. HPA axis functioning normally.`})}const sc=document.createElement('div');sc.className=`sentinel-card ${sst}`;sc.innerHTML=`<div class="sentinel-header"><div class="sentinel-label">STRESS SENTINEL</div><div class="sentinel-status ${sst}">${svd}</div><div class="sentinel-verdict">HPA Axis Analysis</div></div><div class="sentinel-details">${srd.map(r=>`<div class="sentinel-marker"><div><div class="sentinel-marker-name">${r.m}</div><div class="sentinel-marker-reason">${r.r}</div></div><div class="sentinel-marker-value ${sst}">${r.v}<div style="font-size:10px">${r.u}</div></div></div>`).join('')}</div>`;g.appendChild(sc);hideProcessing()},1500)}
+
+    function analyzeCohorts(){showProcessing('PROCESSING LAYER 03','Computing cohort matrix patterns...');setTimeout(()=>{unlockLayer(3);renderCohortMatrix();hideProcessing()},1500)}
+
+    function renderCohortMatrix(){const p=PATIENTS[currentPatient],g=document.getElementById('cohort-grid');g.innerHTML='';const cohorts=[{i:'🍬',n:'T2D Syndrome',m:'HOMA-IR + HbA1c + F:B',f:calcT2D},{i:'❤️',n:'Cardio Hazard',m:'ApoB + Lp(a) + Urate',f:calcCardio},{i:'🔥',n:'IBD Pattern',m:'CRP + Ferritin + Akkermansia',f:calcIBD},{i:'💊',n:'Metabolic Obesity',m:'Triglycerides + HDL + HOMA',f:calcObesity},{i:'🔬',n:'Renal Decay',m:'eGFR + Urate + Creatinine',f:calcRenal}];cohorts.forEach(co=>{const res=co.f(p);let r='optimal',st='Optimal Performance';if(res.pct>0){if(res.pct<30){r='low';st='Low Risk'}else if(res.pct<60){r='medium';st='Medium Risk'}else{r='high';st='High Risk'}}const c=document.createElement('div');c.className=`cohort-card ${r}`;c.innerHTML=`<div class="cohort-main"><div class="cohort-icon">${co.i}</div><div class="cohort-info"><h3>${co.n}</h3><div class="cohort-markers">${co.m}</div></div><div><div class="cohort-percent ${r}">${res.pct}%</div><div class="cohort-label">Match</div><div class="cohort-status">${st}</div></div></div><div class="cohort-deep-dive"><div class="deep-dive-title">🔬 MATHEMATICAL BREAKDOWN</div><div class="math-breakdown">${res.bd.map(b=>`<div class="math-row"><div class="math-condition">${b.c}</div><div class="math-logic">${b.l}</div><div class="math-score ${b.s}">${b.p>0?'+':''}${b.p} pts</div></div>`).join('')}<div class="math-total">TOTAL: ${res.pct}% MATCH ${res.pct===0?'(OPTIMAL)':''}</div></div></div>`;g.appendChild(c)})}
+
+    function calcT2D(p){const hm=p.markers.homa_ir.value,hb=p.markers.hba1c.value,fb=p.phyla.firmicutes.value/p.phyla.bacteroides.value;const bd=[];let sc=0;if(hm>3){sc+=40;bd.push({c:'HOMA-IR > 3.0',l:`Value: ${hm} → TRUE`,p:40,s:'rose'})}else if(hm>1.8){sc+=20;bd.push({c:'HOMA-IR > 1.8',l:`Value: ${hm} → TRUE`,p:20,s:'amber'})}else{bd.push({c:'HOMA-IR < 1.8',l:`Value: ${hm} → OPTIMAL`,p:0,s:'green'})}if(hb>6){sc+=30;bd.push({c:'HbA1c > 6.0',l:`Value: ${hb} → TRUE`,p:30,s:'rose'})}else if(hb>5.6){sc+=15;bd.push({c:'HbA1c > 5.6',l:`Value: ${hb} → TRUE`,p:15,s:'amber'})}else{bd.push({c:'HbA1c < 5.6',l:`Value: ${hb} → OPTIMAL`,p:0,s:'green'})}if(fb>1.2){sc+=30;bd.push({c:'F:B Ratio > 1.2',l:`Value: ${fb.toFixed(2)} → TRUE`,p:30,s:'rose'})}else if(fb>1){sc+=15;bd.push({c:'F:B Ratio > 1.0',l:`Value: ${fb.toFixed(2)} → TRUE`,p:15,s:'amber'})}else{bd.push({c:'F:B Ratio < 1.0',l:`Value: ${fb.toFixed(2)} → OPTIMAL`,p:0,s:'green'})}return{pct:Math.min(sc,95),bd}}
+
+    function calcCardio(p){const ab=p.markers.apo_b.value,lp=p.markers.lp_a.value,ua=p.markers.uric_acid.value;const bd=[];let sc=0;if(ab>100){sc+=35;bd.push({c:'ApoB > 100',l:`Value: ${ab} → TRUE`,p:35,s:'rose'})}else if(ab>80){sc+=18;bd.push({c:'ApoB > 80',l:`Value: ${ab} → TRUE`,p:18,s:'amber'})}else{bd.push({c:'ApoB < 80',l:`Value: ${ab} → OPTIMAL`,p:0,s:'green'})}if(lp>50){sc+=25;bd.push({c:'Lp(a) > 50',l:`Value: ${lp} → TRUE`,p:25,s:'rose'})}else if(lp>30){sc+=12;bd.push({c:'Lp(a) > 30',l:`Value: ${lp} → TRUE`,p:12,s:'amber'})}else{bd.push({c:'Lp(a) < 30',l:`Value: ${lp} → OPTIMAL`,p:0,s:'green'})}if(ua>7.2){sc+=25;bd.push({c:'Urate > 7.2',l:`Value: ${ua} → TRUE`,p:25,s:'rose'})}else if(ua>6){sc+=12;bd.push({c:'Urate > 6.0',l:`Value: ${ua} → TRUE`,p:12,s:'amber'})}else{bd.push({c:'Urate < 6.0',l:`Value: ${ua} → OPTIMAL`,p:0,s:'green'})}return{pct:Math.min(sc,95),bd}}
+
+    function calcIBD(p){const cr=p.markers.crp.value,fe=p.markers.ferritin.value,ak=p.phyla.akkermansia.value;const bd=[];let sc=0;if(cr>5){sc+=40;bd.push({c:'CRP > 5.0',l:`Value: ${cr} → TRUE`,p:40,s:'rose'})}else if(cr>1){sc+=20;bd.push({c:'CRP > 1.0',l:`Value: ${cr} → TRUE`,p:20,s:'amber'})}else{bd.push({c:'CRP < 1.0',l:`Value: ${cr} → OPTIMAL`,p:0,s:'green'})}if(fe>300){sc+=20;bd.push({c:'Ferritin > 300',l:`Value: ${fe} → TRUE`,p:20,s:'rose'})}else if(fe>200){sc+=10;bd.push({c:'Ferritin > 200',l:`Value: ${fe} → TRUE`,p:10,s:'amber'})}else{bd.push({c:'Ferritin < 200',l:`Value: ${fe} → OPTIMAL`,p:0,s:'green'})}if(ak<5){sc+=25;bd.push({c:'Akkermansia < 5%',l:`Value: ${ak}% → TRUE`,p:25,s:'rose'})}else if(ak<8){sc+=12;bd.push({c:'Akkermansia < 8%',l:`Value: ${ak}% → TRUE`,p:12,s:'amber'})}else{bd.push({c:'Akkermansia > 8%',l:`Value: ${ak}% → OPTIMAL`,p:0,s:'green'})}return{pct:Math.min(sc,95),bd}}
+
+    function calcObesity(p){const tg=p.markers.triglycerides.value,hd=p.markers.hdl.value,hm=p.markers.homa_ir.value;const bd=[];let sc=0;if(tg>150){sc+=35;bd.push({c:'Triglycerides > 150',l:`Value: ${tg} → TRUE`,p:35,s:'rose'})}else if(tg>120){sc+=18;bd.push({c:'Triglycerides > 120',l:`Value: ${tg} → TRUE`,p:18,s:'amber'})}else{bd.push({c:'Triglycerides < 120',l:`Value: ${tg} → OPTIMAL`,p:0,s:'green'})}if(hd<45){sc+=30;bd.push({c:'HDL < 45',l:`Value: ${hd} → TRUE`,p:30,s:'rose'})}else if(hd<50){sc+=15;bd.push({c:'HDL < 50',l:`Value: ${hd} → TRUE`,p:15,s:'amber'})}else{bd.push({c:'HDL > 50',l:`Value: ${hd} → OPTIMAL`,p:0,s:'green'})}if(hm>2.5){sc+=35;bd.push({c:'HOMA-IR > 2.5',l:`Value: ${hm} → TRUE`,p:35,s:'rose'})}else if(hm>1.8){sc+=18;bd.push({c:'HOMA-IR > 1.8',l:`Value: ${hm} → TRUE`,p:18,s:'amber'})}else{bd.push({c:'HOMA-IR < 1.8',l:`Value: ${hm} → OPTIMAL`,p:0,s:'green'})}return{pct:Math.min(sc,95),bd}}
+
+    function calcRenal(p){const eg=p.markers.egfr.value,ua=p.markers.uric_acid.value,cr=p.markers.creatinine.value;const bd=[];let sc=0;if(eg<60){sc+=40;bd.push({c:'eGFR < 60',l:`Value: ${eg} → TRUE`,p:40,s:'rose'})}else if(eg<90){sc+=20;bd.push({c:'eGFR < 90',l:`Value: ${eg} → TRUE`,p:20,s:'amber'})}else{bd.push({c:'eGFR > 90',l:`Value: ${eg} → OPTIMAL`,p:0,s:'green'})}if(ua>7.5){sc+=30;bd.push({c:'Urate > 7.5',l:`Value: ${ua} → TRUE`,p:30,s:'rose'})}else if(ua>6.5){sc+=15;bd.push({c:'Urate > 6.5',l:`Value: ${ua} → TRUE`,p:15,s:'amber'})}else{bd.push({c:'Urate < 6.5',l:`Value: ${ua} → OPTIMAL`,p:0,s:'green'})}if(cr>1.3){sc+=15;bd.push({c:'Creatinine > 1.3',l:`Value: ${cr} → TRUE`,p:15,s:'rose'})}else if(cr>1.1){sc+=8;bd.push({c:'Creatinine > 1.1',l:`Value: ${cr} → TRUE`,p:8,s:'amber'})}else{bd.push({c:'Creatinine < 1.1',l:`Value: ${cr} → OPTIMAL`,p:0,s:'green'})}return{pct:Math.min(sc,95),bd}}
+
+    function analyzeHandshakes(){showProcessing('PROCESSING LAYER 04','Computing gut-blood correlations...');setTimeout(()=>{unlockLayer(4);const p=PATIENTS[currentPatient],t=document.getElementById('terminal');t.innerHTML='';const logs=['<span class="terminal-prompt">[SYSTEM]</span> Init multi-pathway analysis','<span class="terminal-success">[OK]</span> Loading 6 correlation pathways','<span class="terminal-success">[OK]</span> Gut phyla loaded','<span class="terminal-success">[OK]</span> Blood markers loaded','<span class="terminal-prompt">[PROC]</span> Processing gut-systemic correlations','<span class="terminal-success">[DONE]</span> All pathways computed'];logs.forEach((l,i)=>setTimeout(()=>{const ln=document.createElement('div');ln.className='terminal-line';ln.innerHTML=l;t.appendChild(ln)},i*120));setTimeout(()=>renderHandshakes(p),800);hideProcessing()},1500)}
+
+    function renderHandshakes(p){const c=document.getElementById('handshake-container');c.innerHTML='';const hands=[makeMetabolic(p),makeVascular(p),makeInflammatory(p),makeHepatic(p),makeRenal(p),makeNutrient(p)];hands.forEach(h=>c.innerHTML+=h)}
+
+    function makeMetabolic(p){const fb=(p.phyla.firmicutes.value/p.phyla.bacteroides.value).toFixed(2),hm=p.markers.homa_ir.value;const fbSt=fb>1.2?'rose':fb>1?'amber':'green',hmSt=getStatus('homa_ir',hm);let txt=fb>1||hmSt!=='green'?`<strong>PATHOLOGICAL:</strong> High harvesting (F:B ${fb}) drives excess calorie extraction, forcing elevated insulin. Leads to resistance (HOMA-IR ${hm}).`:`<strong>OPTIMAL:</strong> Balanced phyla (F:B ${fb}) maintains efficient energy extraction without insulin stress. HOMA-IR ${hm} confirms excellent sensitivity.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 METABOLIC HANDSHAKE</div><div class="scan-subtitle">Harvesting → Insulin Resistance Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">🦠</div><div class="blob-visual-label">GUT RATIO</div><div class="blob-visual-name">F:B Ratio</div><div class="blob-visual-value ${fbSt}">${fb}</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">Metabolic Link</div></div><div class="blob-visual"><div class="blob-visual-icon">⚡</div><div class="blob-visual-label">INSULIN</div><div class="blob-visual-name">HOMA-IR</div><div class="blob-visual-value ${hmSt}">${hm}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function makeVascular(p){const ak=p.phyla.akkermansia.value,ab=p.markers.apo_b.value;const akSt=getPhylaStatus('akkermansia',ak),abSt=getStatus('apo_b',ab);let txt=akSt!=='green'||abSt!=='green'?`<strong>PATHOLOGICAL:</strong> Depleted shield (Akkermansia ${ak}%) compromises mucin integrity, allowing particle penetration (ApoB ${ab}). Increases CVD risk.`:`<strong>OPTIMAL:</strong> Robust shield bacteria (Akkermansia ${ak}%) maintains vascular protection. ApoB ${ab} confirms low particle burden.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 VASCULAR HANDSHAKE</div><div class="scan-subtitle">Shield Depletion → Particle Accumulation Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">🛡️</div><div class="blob-visual-label">GUT SHIELD</div><div class="blob-visual-name">Akkermansia</div><div class="blob-visual-value ${akSt}">${ak}%</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">Vascular Link</div></div><div class="blob-visual"><div class="blob-visual-icon">❤️</div><div class="blob-visual-label">PARTICLES</div><div class="blob-visual-name">ApoB</div><div class="blob-visual-value ${abSt}">${ab}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function makeInflammatory(p){const pr=p.phyla.proteobacteria.value,cr=p.markers.crp.value;const prSt=getPhylaStatus('proteobacteria',pr),crSt=getStatus('crp',cr);let txt=prSt!=='green'||crSt!=='green'?`<strong>PATHOLOGICAL:</strong> Hazard bacteria overgrowth (Proteobacteria ${pr}%) triggers systemic inflammation (CRP ${cr}). LPS translocation drives fire.`:`<strong>OPTIMAL:</strong> Hazard bacteria controlled (Proteobacteria ${pr}%) prevents inflammatory signaling. CRP ${cr} confirms low systemic fire.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 INFLAMMATORY HANDSHAKE</div><div class="scan-subtitle">Hazard Bacteria → Systemic Fire Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">☠️</div><div class="blob-visual-label">HAZARD</div><div class="blob-visual-name">Proteobacteria</div><div class="blob-visual-value ${prSt}">${pr}%</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">LPS Pathway</div></div><div class="blob-visual"><div class="blob-visual-icon">🔥</div><div class="blob-visual-label">INFLAMMATION</div><div class="blob-visual-name">hs-CRP</div><div class="blob-visual-value ${crSt}">${cr}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function makeHepatic(p){const fb=(p.phyla.firmicutes.value/p.phyla.bacteroides.value).toFixed(2),alt=p.markers.alt.value;const fbSt=fb>1.2?'rose':fb>1?'amber':'green',altSt=getStatus('alt',alt);let txt=fbSt!=='green'||altSt!=='green'?`<strong>PATHOLOGICAL:</strong> High harvesting (F:B ${fb}) + metabolic overload drives hepatic stress (ALT ${alt}). Fat accumulation pattern detected.`:`<strong>OPTIMAL:</strong> Balanced harvesting (F:B ${fb}) prevents hepatic overload. ALT ${alt} confirms healthy liver function.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 HEPATIC HANDSHAKE</div><div class="scan-subtitle">Metabolic Overload → Liver Stress Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">🦠</div><div class="blob-visual-label">METABOLIC</div><div class="blob-visual-name">F:B Ratio</div><div class="blob-visual-value ${fbSt}">${fb}</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">Hepatic Link</div></div><div class="blob-visual"><div class="blob-visual-icon">💧</div><div class="blob-visual-label">LIVER</div><div class="blob-visual-name">ALT</div><div class="blob-visual-value ${altSt}">${alt}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function makeRenal(p){const ac=p.phyla.actinobacteria.value,ua=p.markers.uric_acid.value;const acSt=getPhylaStatus('actinobacteria',ac),uaSt=getStatus('uric_acid',ua);let txt=acSt!=='green'||uaSt!=='green'?`<strong>PATHOLOGICAL:</strong> Defense bacteria overactivation (Actinobacteria ${ac}%) correlates with urate accumulation (${ua}). Purine metabolism disruption.`:`<strong>OPTIMAL:</strong> Defense bacteria balanced (Actinobacteria ${ac}%) maintains healthy purine metabolism. Urate ${ua} within range.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 RENAL HANDSHAKE</div><div class="scan-subtitle">Defense Activation → Urate Accumulation Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">⚔️</div><div class="blob-visual-label">DEFENSE</div><div class="blob-visual-name">Actinobacteria</div><div class="blob-visual-value ${acSt}">${ac}%</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">Purine Link</div></div><div class="blob-visual"><div class="blob-visual-icon">🔬</div><div class="blob-visual-label">FILTRATION</div><div class="blob-visual-name">Uric Acid</div><div class="blob-visual-value ${uaSt}">${ua}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function makeNutrient(p){const totDiv=p.phyla.firmicutes.value+p.phyla.bacteroides.value+p.phyla.akkermansia.value+p.phyla.actinobacteria.value+p.phyla.proteobacteria.value;const vitd=p.markers.vit_d.value,b12=p.markers.vit_b12.value;const divSt=totDiv>85?'green':totDiv>75?'amber':'rose',vdSt=getStatus('vit_d',vitd),b12St=getStatus('vit_b12',b12);let txt=(vdSt!=='green'||b12St!=='green')?`<strong>PATHOLOGICAL:</strong> Low microbial diversity (${totDiv.toFixed(1)}% total) impairs nutrient synthesis. Vit-D ${vitd} and B12 ${b12} show deficiency.`:`<strong>OPTIMAL:</strong> Robust microbial diversity (${totDiv.toFixed(1)}% total) supports nutrient synthesis. Vit-D ${vitd} and B12 ${b12} adequate.`;return`<div class="handshake-visual"><div class="scan-header"><div class="scan-title">🔗 NUTRIENT HANDSHAKE</div><div class="scan-subtitle">Diversity Depletion → Vitamin Synthesis Pathway</div></div><div class="blob-scanner"><div class="blob-visual"><div class="blob-visual-icon">🌈</div><div class="blob-visual-label">DIVERSITY</div><div class="blob-visual-name">Total Phyla</div><div class="blob-visual-value ${divSt}">${totDiv.toFixed(1)}%</div></div><div><div class="connector-arrow">⟹</div><div class="connector-label">Synthesis Link</div></div><div class="blob-visual"><div class="blob-visual-icon">🧬</div><div class="blob-visual-label">NUTRIENTS</div><div class="blob-visual-name">Vit-D / B12</div><div class="blob-visual-value ${vdSt==='green'&&b12St==='green'?'green':vdSt==='rose'||b12St==='rose'?'rose':'amber'}">${vitd} / ${b12}</div></div></div><div class="scan-data"><div class="scan-data-title">🔬 PATHWAY ANALYSIS</div><div class="scan-data-text">${txt}</div></div></div>`}
+
+    function renderDiagnostic(){showProcessing('PROCESSING LAYER 05','Generating comprehensive diagnostic report...');setTimeout(()=>{const p=PATIENTS[currentPatient];let opt=0;Object.entries(p.markers).forEach(([k,d])=>{if(getStatus(k,d.value)==='green')opt++});const hs=Math.round((opt/27)*100),isSov=hs>=85,sa=p.bioAge-p.age,at=sa>0?`+${sa} years (Biological reversal)`:`${Math.abs(sa)} years (Accelerated aging)`;let gccT=0;GCC_MARKERS.forEach(id=>{const st=getStatus(id,p.markers[id].value);if(st==='green')gccT+=100;else if(st==='amber')gccT+=50});const gccS=Math.round(gccT/600*100);const cohRes={t2d:calcT2D(p).pct,cvd:calcCardio(p).pct,ibd:calcIBD(p).pct,obesity:calcObesity(p).pct,renal:calcRenal(p).pct};const maxCoh=Math.max(cohRes.t2d,cohRes.cvd,cohRes.ibd,cohRes.obesity,cohRes.renal);let cohStr='';if(maxCoh===0){cohStr='No disease pattern matches detected. All systems operating within optimal parameters.'}else{const risks=[];if(cohRes.t2d>60)risks.push(`Type 2 Diabetes (${cohRes.t2d}% match)`);if(cohRes.cvd>60)risks.push(`Cardiovascular Disease (${cohRes.cvd}% match)`);if(cohRes.ibd>60)risks.push(`Inflammatory Bowel Disease (${cohRes.ibd}% match)`);if(cohRes.obesity>60)risks.push(`Metabolic Obesity (${cohRes.obesity}% match)`);if(cohRes.renal>60)risks.push(`Renal Dysfunction (${cohRes.renal}% match)`);cohStr=risks.length>0?`High-risk cohort patterns identified: ${risks.join(', ')}.`:`Moderate dysregulation detected across multiple systems.`}document.getElementById('diagnostic-sheet').innerHTML=`<div class="diagnostic-header"><div class="diagnostic-title ${isSov?'sovereignty':'decoherence'}">${isSov?'🛡️ BIOLOGICAL SOVEREIGNTY':'🔥 MULTI-SYSTEM DECOHERENCE'}</div><div class="diagnostic-subtitle">${isSov?'Autonomous Multi-Omic Synchronization Detected':'Critical System-Wide Dysregulation Identified'}</div></div><div class="diagnostic-section"><div class="diagnostic-section-title">📋 Executive Summary</div><div class="diagnostic-text">${isSov?`The analyzed multi-omic profile demonstrates exceptional biological optimization across all measured domains. With ${opt} of 27 biomarkers operating within optimal ranges (${hs}% health score), this individual exhibits hallmarks of metabolic sovereignty. The biological age of ${p.bioAge} years represents a ${Math.abs(sa)}-year reversal relative to chronological age ${p.age}, indicating superior cellular maintenance and repair mechanisms.`:`The multi-omic analysis reveals significant system-wide dysregulation. Only ${opt} of 27 biomarkers remain within optimal ranges (${hs}% health score), indicating multi-organ stress. Biological age of ${p.bioAge} years exceeds chronological age ${p.age} by ${Math.abs(sa)} years, reflecting accelerated cellular aging and impaired regenerative capacity.`}</div><div class="diagnostic-text"><strong>GCC Assessment:</strong> ${gccS}% composite score across six critical biomarkers (HbA1c, HOMA-IR, ApoB, CRP, Ferritin, eGFR). ${gccS>=70?'This indicates robust metabolic and inflammatory control.':'This reflects significant metabolic and inflammatory burden requiring intervention.'}</div><div class="diagnostic-text"><strong>Cohort Analysis:</strong> ${cohStr}</div><div class="diagnostic-grid"><div class="diagnostic-item ${isSov?'green':'rose'}"><div class="diagnostic-item-title">Health Score</div><div class="diagnostic-item-value">${hs}% (${opt}/27 optimal)</div></div><div class="diagnostic-item ${sa<0?'green':'rose'}"><div class="diagnostic-item-title">Biological Aging</div><div class="diagnostic-item-value">${at}</div></div><div class="diagnostic-item ${gccS>=70?'green':gccS>=50?'amber':'rose'}"><div class="diagnostic-item-title">GCC Score</div><div class="diagnostic-item-value">${gccS}% (${gccS>=90?'A+':gccS>=80?'A':gccS>=70?'B':gccS>=60?'C':gccS>=50?'D':'F'})</div></div><div class="diagnostic-item ${maxCoh<30?'green':maxCoh<60?'amber':'rose'}"><div class="diagnostic-item-title">Max Cohort Risk</div><div class="diagnostic-item-value">${maxCoh}% match</div></div></div></div><div class="diagnostic-section"><div class="diagnostic-section-title">🔬 Pathway Integration</div><div class="diagnostic-text">The gut-blood handshake analysis reveals ${isSov?'synchronized':'disrupted'} communication between the microbiome and systemic physiology. Key findings include:</div><div class="diagnostic-text"><strong>Metabolic Pathway:</strong> Firmicutes:Bacteroides ratio of ${(p.phyla.firmicutes.value/p.phyla.bacteroides.value).toFixed(2)} ${p.phyla.firmicutes.value/p.phyla.bacteroides.value<1?'supports efficient energy regulation':'indicates excessive caloric harvesting'}. HOMA-IR of ${p.markers.homa_ir.value} ${getStatus('homa_ir',p.markers.homa_ir.value)==='green'?'confirms excellent insulin sensitivity.':'reflects insulin resistance requiring dietary intervention.'}</div><div class="diagnostic-text"><strong>Inflammatory Control:</strong> hs-CRP ${p.markers.crp.value} mg/L and Ferritin ${p.markers.ferritin.value} ng/mL ${getStatus('crp',p.markers.crp.value)==='green'&&getStatus('ferritin',p.markers.ferritin.value)==='green'?'demonstrate minimal inflammatory burden.':'indicate active inflammatory processes requiring assessment.'} Proteobacteria at ${p.phyla.proteobacteria.value}% ${getPhylaStatus('proteobacteria',p.phyla.proteobacteria.value)==='green'?'remains controlled.':'suggests dysbiosis-driven endotoxemia.'}</div><div class="diagnostic-text"><strong>Vascular Protection:</strong> Akkermansia muciniphila at ${p.phyla.akkermansia.value}% ${getPhylaStatus('akkermansia',p.phyla.akkermansia.value)==='green'?'provides robust mucosal barrier integrity.':'indicates compromised intestinal barrier function.'} ApoB particle count of ${p.markers.apo_b.value} mg/dL ${getStatus('apo_b',p.markers.apo_b.value)==='green'?'confirms minimal atherogenic risk.':'reflects elevated cardiovascular risk burden.'}</div></div><div class="diagnostic-section"><div class="diagnostic-section-title">💡 Actionable Insights</div><div class="diagnostic-text">${isSov?`This profile represents the <1% of individuals who achieve true metabolic sovereignty. Recommended strategy focuses on maintenance and longevity optimization: (1) Continue high-diversity fiber intake (30g+ daily) to sustain beneficial phyla ratios. (2) Maintain metabolic rest rotation (minimum 16:8 time-restricted feeding) to preserve insulin sensitivity. (3) Implement Zone 2 cardiovascular training with resistance protocols to support mitochondrial health. (4) Conduct quarterly multi-omic monitoring to detect early drift signals. (5) Consider advanced longevity interventions (NAD+ optimization, senolytic protocols) for biological age extension.`:`Immediate intervention required to reverse multi-system decoherence. Priority recommendations: (1) Eliminate all processed carbohydrate sources and implement therapeutic fasting (minimum 18:6, target 20:4) to reset insulin signaling. (2) High-dose prebiotic fiber (inulin 15g, resistant starch 20g daily) to restore beneficial microbial balance. (3) Anti-inflammatory nutrition protocols emphasizing omega-3 fatty acids, polyphenols, and cruciferous vegetables. (4) Address specific cohort risks through targeted interventions (GLP-1 agonists for T2D, PCSK9 inhibitors for CVD, microbiome transplant for IBD as clinically appropriate). (5) Implement comprehensive lifestyle modifications (sleep hygiene, stress management, movement protocols) as foundational support. (6) Retest at 30-day intervals to monitor intervention efficacy and adjust protocols dynamically.`}</div></div><div class="disclaimer-box"><div class="disclaimer-title">⚠️ IMPORTANT DISCLAIMER</div><div class="disclaimer-text">This analysis is for informational and research purposes only. It does NOT constitute medical advice, diagnosis, or treatment recommendations. The Burak Multiomics platform is an analytical tool designed to identify multi-omic patterns and correlations. All clinical decisions, including any interventions or lifestyle modifications, must be made in consultation with qualified healthcare professionals. Do not start, stop, or modify any medical treatment based solely on this report. If you have health concerns, consult a licensed physician immediately.</div></div>`;hideProcessing()},2000)}
+
+    window.onload=init;
+    </script>
+</body>
+</html>
